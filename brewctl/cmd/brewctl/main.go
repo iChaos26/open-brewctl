@@ -1,8 +1,10 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
+	"os"
 
 	"brewctl/internal/airbyte"
 	"brewctl/internal/kube"
@@ -43,7 +45,6 @@ var clusterInitCmd = &cobra.Command{
 			log.Fatalf("❌ Failed to deploy MongoDB: %v", err)
 		}
 
-		// ✅ CORREÇÃO: Usar monitoring.Deploy() em vez das funções individuais
 		if err := monitoring.Deploy(); err != nil {
 			log.Fatalf("❌ Failed to deploy monitoring stack: %v", err)
 		}
@@ -144,18 +145,59 @@ var statusCmd = &cobra.Command{
 			defer aggService.Close()
 			fmt.Println("✅ MongoDB is accessible")
 
-			// Count documents in each collection
-			ctx := cmd.Context()
+			// Count documents in each collection - usando contexto correto
+			ctx := context.Background()
 			if rawCount, err := aggService.DB.Collection("breweries_raw").CountDocuments(ctx, bson.M{}); err == nil {
 				fmt.Printf("📊 Bronze layer (raw): %d documents\n", rawCount)
+			} else {
+				log.Printf("⚠️ Failed to count raw documents: %v", err)
 			}
+
 			if cleanCount, err := aggService.DB.Collection("breweries_clean").CountDocuments(ctx, bson.M{}); err == nil {
 				fmt.Printf("📊 Silver layer (clean): %d documents\n", cleanCount)
+			} else {
+				log.Printf("⚠️ Failed to count clean documents: %v", err)
 			}
+
 			if aggCount, err := aggService.DB.Collection("breweries_aggregated").CountDocuments(ctx, bson.M{}); err == nil {
 				fmt.Printf("📊 Gold layer (aggregated): %d documents\n", aggCount)
+			} else {
+				log.Printf("⚠️ Failed to count aggregated documents: %v", err)
 			}
 		}
+	},
+}
+
+var fullPipelineCmd = &cobra.Command{
+	Use:   "full-pipeline",
+	Short: "Run complete data pipeline (sync + aggregations)",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("🎯 Running complete data pipeline...")
+
+		// Primeiro, deploy das conexões
+		fmt.Println("\n📍 Step 1: Deploying Airbyte connections...")
+		client := airbyte.NewAirbyteClient("http://localhost:8000")
+		if err := client.SetupConnections(); err != nil {
+			log.Fatalf("❌ Failed to deploy connections: %v", err)
+		}
+
+		// Depois, executar agregações
+		fmt.Println("\n📍 Step 2: Running MongoDB aggregations...")
+		aggService, err := mongodb.NewAggregationService("mongodb://localhost:27017")
+		if err != nil {
+			log.Fatalf("❌ Failed to connect to MongoDB: %v", err)
+		}
+		defer aggService.Close()
+
+		if err := aggService.RunSilverLayerAggregation(); err != nil {
+			log.Fatalf("❌ Silver layer aggregation failed: %v", err)
+		}
+
+		if err := aggService.RunGoldLayerAggregation(); err != nil {
+			log.Fatalf("❌ Gold layer aggregation failed: %v", err)
+		}
+
+		fmt.Println("✅ Complete pipeline executed successfully!")
 	},
 }
 
@@ -169,34 +211,20 @@ var versionCmd = &cobra.Command{
 	},
 }
 
-// ✅ ADICIONAR: Import necessário para bson.M
-
 func init() {
 	rootCmd.AddCommand(
 		clusterInitCmd,
 		deployConnectionsCmd,
 		runAggregationsCmd,
+		fullPipelineCmd,
 		statusCmd,
 		versionCmd,
 	)
 }
 
-// Exemplo de uso completo
 func main() {
-	// 1. Criar cliente
-	client := NewAirbyteClient("http://localhost:8000")
-
-	// 2. Configurar todas as conexões
-	if err := client.SetupConnections(); err != nil {
-		fmt.Printf("❌ Setup failed: %v\n", err)
-		return
+	if err := rootCmd.Execute(); err != nil {
+		fmt.Fprintf(os.Stderr, "❌ Error executing command: %v\n", err)
+		os.Exit(1)
 	}
-
-	// 3. (Opcional) Iniciar sincronização manual
-	// connectionID := "sua-connection-id-aqui"
-	// if err := client.SyncConnection(connectionID); err != nil {
-	//     fmt.Printf("❌ Sync failed: %v\n", err)
-	// }
-
-	fmt.Println("✅ Airbyte pipeline configured successfully!")
 }
