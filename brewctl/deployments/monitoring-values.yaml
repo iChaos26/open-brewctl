@@ -1,0 +1,15 @@
+server:
+  service:
+    type: NodePort
+    nodePort: 9090
+alertmanager:
+  enabled: false
+pushgateway:
+  enabled: false
+
+  service:
+    type: NodePort
+    nodePort: 3000
+  adminPassword: admin
+  persistence:
+    enabled: true

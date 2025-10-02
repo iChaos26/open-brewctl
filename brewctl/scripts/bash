@@ -1,0 +1,11 @@
+# Tornar executável e rodar
+chmod +x scripts/setup-and-run.sh
+
+# Execução completa
+./scripts/setup-and-run.sh
+
+# Ou usar a CLI diretamente para mais controle
+go build -o brewctl ./cmd/brewctl
+./brewctl cluster-init
+./brewctl deploy-connections
+./brewctl run-aggregations

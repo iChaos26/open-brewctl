@@ -1,0 +1,26 @@
+global:
+  service:
+    type: NodePort
+
+server:
+  service:
+    nodePorts:
+      api: 8000
+
+worker:
+  enabled: true
+  replicas: 2
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+
+ingress:
+  enabled: true
+  className: "nginx"
+  hosts:
+  - host: airbyte.local
+    paths:
+    - path: /
+      pathType: Prefix

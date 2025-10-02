@@ -1,0 +1,15 @@
+auth:
+  enabled: false
+
+persistence:
+  enabled: true
+  size: 10Gi
+
+service:
+  type: NodePort
+  nodePort: 27017
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
