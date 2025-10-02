@@ -11,30 +11,19 @@ import (
 func CreateKindCluster() error {
 	fmt.Println("🔧 Creating Kind Kubernetes cluster...")
 
+	// ✅ USAR CONFIGURAÇÃO ALTERNATIVA (sem portas 80/443)
 	kindConfig := `kind: Cluster
 apiVersion: kind.x-k8s.io/v1alpha4
 name: brewctl-cluster
 nodes:
 - role: control-plane
-  kubeadmConfigPatches:
-  - |
-    kind: InitConfiguration
-    nodeRegistration:
-      kubeletExtraArgs:
-        node-labels: "ingress-ready=true"
   extraPortMappings:
-  - containerPort: 80
-    hostPort: 80
-    protocol: TCP
-  - containerPort: 443
-    hostPort: 443
-    protocol: TCP
   - containerPort: 8000
     hostPort: 8000
     protocol: TCP
   - containerPort: 3000
     hostPort: 3000
-    protocol: TCP
+    protocol: TCP  
   - containerPort: 9090
     hostPort: 9090
     protocol: TCP
@@ -48,7 +37,7 @@ nodes:
 	}
 	defer os.Remove(configPath)
 
-	// Create cluster
+	// Resto do código permanece igual...
 	cmd := exec.Command("kind", "create", "cluster", "--config", configPath)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
