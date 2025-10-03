@@ -35,10 +35,7 @@ func DeployMongoDB() error {
 		setPlatform bool
 	}{
 		// Tags Bitnami validadas para amd64
-		{tag: "6.0.4-debian-11-r30", setPlatform: true},
-		{tag: "5.0.8-debian-11-r23", setPlatform: true},
-		// Tentativa com imagem oficial do MongoDB Community
-		{tag: "6.0.5", setPlatform: false},
+		{tag: "4.0.10-debian-9-r47", setPlatform: true},
 	}
 
 	for i, img := range validImages {
