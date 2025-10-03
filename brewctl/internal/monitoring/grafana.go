@@ -26,7 +26,7 @@ func DeployGrafana() error {
 	cmd = exec.Command("helm", "install", "grafana", "grafana/grafana",
 		"--namespace", "default",
 		"--set", "service.type=NodePort",
-		"--set", "service.nodePort=3000",
+		"--set", "service.nodePort=32000",
 		"--set", "adminPassword=admin",
 		"--set", "persistence.enabled=true",
 		"--set", "persistence.size=10Gi",

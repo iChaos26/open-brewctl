@@ -26,7 +26,7 @@ func DeployPrometheus() error {
 	cmd = exec.Command("helm", "install", "prometheus", "prometheus-community/prometheus",
 		"--namespace", "default",
 		"--set", "server.service.type=NodePort",
-		"--set", "server.service.nodePort=9090",
+		"--set", "server.service.nodePort=30090",
 		"--set", "alertmanager.enabled=false",
 		"--set", "pushgateway.enabled=false",
 		"--set", "nodeExporter.enabled=false",
