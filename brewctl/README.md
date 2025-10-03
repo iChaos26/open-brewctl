@@ -65,47 +65,47 @@ A API Open Brewery DB é bem estruturada e oferece endpoints que permitem uma co
 ## 🏗️ Estrutura do Projeto
 
 .
-├── brewctl
-├── cmd
-│   └── brewctl
-│       └── main.go
-├── deployments
-│   ├── airbyte-values.yaml
-│   ├── kind-config.yaml
-│   ├── mongodb-values.yaml
-│   └── monitoring-values.yaml
-├── go.mod
-├── go.sum
-├── internal
-│   ├── airbyte
-│   │   ├── client.go
-│   │   ├── connections.go
-│   │   └── deploy.go
-│   ├── brewerydb
-│   │   ├── client.go
-│   │   └── importer.go
-│   ├── kube
-│   │   ├── helm.go
-│   │   └── kind.go
-│   ├── mongodb
-│   │   ├── aggregations.go
-│   │   ├── aggregations_test.go
-│   │   └── client.go
-│   └── monitoring
-│       ├── grafana.go
-│       ├── monitoring.go
-│       └── prometheus.go
-├── pkg
-│   ├── types
-│   └── utils
-├── README.md
-└── scripts
-    ├── bash
-    ├── check-ports.sh
-    ├── health.sh
-    ├── mongodb-aggregations.js
-    ├── quick-start.sh
-    └── setup-and-run.sh
+├── brewctl\
+├── cmd\
+│   └── brewctl\
+│       └── main.go\
+├── deployments\
+│   ├── airbyte-values.yaml\
+│   ├── kind-config.yaml\
+│   ├── mongodb-values.yaml\
+│   └── monitoring-values.yaml\
+├── go.mod\
+├── go.sum\
+├── internal\
+│   ├── airbyte\
+│   │   ├── client.go\
+│   │   ├── connections.go\
+│   │   └── deploy.go\
+│   ├── brewerydb\
+│   │   ├── client.go\
+│   │   └── importer.go\
+│   ├── kube\
+│   │   ├── helm.go\
+│   │   └── kind.go\
+│   ├── mongodb\
+│   │   ├── aggregations.go\
+│   │   ├── aggregations_test.go\
+│   │   └── client.go\
+│   └── monitoring\
+│       ├── grafana.go\
+│       ├── monitoring.go\
+│       └── prometheus.go\
+├── pkg\
+│   ├── types\
+│   └── utils\
+├── README.md\
+└── scripts\
+    ├── bash\
+    ├── check-ports.sh\
+    ├── health.sh\
+    ├── mongodb-aggregations.js\
+    ├── quick-start.sh\
+    └── setup-and-run.sh\
 
 ### Descrição dos Diretórios
 
