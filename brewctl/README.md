@@ -13,6 +13,37 @@ O BrewCtl é uma ferramenta de linha de comando (CLI) escrita em Go que automati
 - **Importação de Dados**: Conecta-se à Open Brewery DB API e importa dados de cervejarias
 - **Aggregações no MongoDB**: Fornece exemplos de agregações para análise dos dados
 
+```mermaid
+graph TB
+    subgraph CLI [Ferramenta brewctl - Go]
+        A[brewctl cluster init] --> B[Deploy Airbyte];
+        B --> C[Deploy MongoDB];
+        C --> D[Deploy Monitoring];
+        D --> E[Config Connections];
+    end
+    
+    subgraph Airbyte [Airbyte - Data Pipelines]
+        F[Source: Brewery API] --> G[Destination: MongoDB];
+        H[Source: Brewery API] --> I[Destination: File JSON];
+        J[Custom Transformations] --> K[Normalization];
+    end
+    
+    subgraph Database [MongoDB - Data Layers]
+        L[breweries_raw<br/>Bronze Layer] --> M[breweries_clean<br/>Silver Layer];
+        M --> N[breweries_aggregated<br/>Gold Layer];
+        O[Aggregation Pipelines] --> P[Business Views];
+    end
+    
+    subgraph Monitor [Monitoring Stack]
+        Q[Prometheus] --> R[Grafana];
+        S[Custom Metrics] --> T[Alerting];
+    end
+    
+    E --> Airbyte
+    Airbyte --> Database
+    Database --> Monitor
+```
+
 ## 📊 Análise da Fonte de Dados (Open Brewery DB API)
 
 A API Open Brewery DB é bem estruturada e oferece endpoints que permitem uma coleta abrangente de dados. Abaixo está um resumo dos endpoints mais relevantes para o nosso pipeline:
