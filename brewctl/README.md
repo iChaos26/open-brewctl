@@ -1,111 +1,127 @@
-# Copilot Instructions for brewctl
-# !TODO: PUT IMAGES OF CLUSTER DEPLOY
-## Project Overview
-- **brewctl** is a CLI tool for managing deployments and clusters, with a focus on Airbyte, MongoDB, and monitoring stacks (Grafana, Prometheus).
-- The codebase is organized by major components: `cmd/` (CLI commands), `internal/` (core logic), `deplyoments/` (configuration files), and `pkg/` (shared types/utilities).
+# BrewCtl - Pipeline de Dados de Cervejarias
 
-## Architecture & Key Patterns
-- **Command Structure:**
-  - Each CLI command is in its own subdirectory under `cmd/` (e.g., `cmd/airbyte/`, `cmd/cluster/`).
-  - The entrypoint is `cmd/root.go`, which wires up subcommands.
-- **Internal Logic:**
-  - Business logic and integrations are in `internal/`, grouped by domain (e.g., `internal/airbyte/client.go`, `internal/kube/helm.go`).
-  - Use Go interfaces and struct composition for extensibility.
-- **Configuration:**
-  - Deployment configs (Helm values, Kind configs) are in `deplyoments/`.
-  - Reference these files for cluster setup and service deployment.
-- **Utilities & Types:**
-  - Shared helpers and type definitions are in `pkg/types/` and `pkg/utils/`.
+## 📖 Introdução
 
-## Developer Workflows
-- **Build:**
-  - Standard Go build: `go build ./...` from the project root.
-- **Test:**
-  - Run all tests: `go test ./...`
-  - No custom test runners detected; use Go's built-in tooling.
-- **Debug:**
-  - Main entrypoint for debugging is `cmd/root.go`.
-  - For CLI command debugging, run with verbose flags if implemented.
+O BrewCtl é uma ferramenta de linha de comando (CLI) escrita em Go que automatiza a criação de um pipeline de dados completo para dados de cervejarias. Ele coleta dados da Open Brewery DB API, armazena em um banco de dados MongoDB e fornece ferramentas de monitoramento com Prometheus e Grafana.
 
-## Conventions & Patterns
-- **File Naming:**
-  - Command files use `*.go` and are grouped by feature.
-  - Config files use `*-values.yaml` or `*-config.yaml`.
-- **Error Handling:**
-  - Use Go error returns; propagate errors up to CLI for user feedback.
-- **External Integrations:**
-  - Integrates with Kubernetes (Kind, Helm), Airbyte, MongoDB, Grafana, Prometheus.
-  - All integration logic is in `internal/`.
+## 🚀 Funcionalidades
 
-## Examples
-- To add a new CLI command: create a new subdirectory in `cmd/`, implement the command, and register it in `cmd/root.go`.
-- To add a new deployment config: place the YAML file in `deplyoments/` and reference it in the relevant internal logic.
+- **Criação de Cluster Kubernetes**: Utiliza Kind para criar um cluster local
+- **Deploy do MongoDB**: Instala o MongoDB usando Helm ou implanta uma imagem oficial como fallback
+- **Deploy do Airbyte**: Configura o Airbyte para ingestão de dados
+- **Monitoramento**: Instala Prometheus e Grafana para monitoramento do cluster e dos dados
+- **Importação de Dados**: Conecta-se à Open Brewery DB API e importa dados de cervejarias
+- **Aggregações no MongoDB**: Fornece exemplos de agregações para análise dos dados
 
-## Key Files & Directories
-- `cmd/root.go`: CLI entrypoint and command registration
-- `internal/airbyte/`: Airbyte integration logic
-- `internal/kube/`: Kubernetes/Helm/Kind logic
-- `deplyoments/`: Deployment configuration files
-- `pkg/types/`, `pkg/utils/`: Shared types and utilities
+## 📊 Análise da Fonte de Dados (Open Brewery DB API)
 
-# Project Structure V1
-# Brewctl - Breweries Data Pipeline
+A API Open Brewery DB é bem estruturada e oferece endpoints que permitem uma coleta abrangente de dados. Abaixo está um resumo dos endpoints mais relevantes para o nosso pipeline:
 
-A CLI tool to manage Airbyte, MongoDB and monitoring stack for breweries data pipeline.
+| Endpoint | Descrição | Parâmetros Relevantes | Utilidade no Pipeline |
+|----------|-----------|----------------------|----------------------|
+| **`/breweries`** | Lista todas as cervejarias, com paginação | `page`, `per_page` (max. 200) | Carga inicial e incremental (baseada em `id` e data de atualização) |
+| **`/breweries/{id}`** | Obtém detalhes de uma cervejaria específica | `obdb-id` | Recuperar detalhes individuais, se necessário |
+| **`/breweries/search`** | Busca cervejarias por um termo | `query` | Carga específica para testes ou casos de uso direcionados |
+| **`/breweries/random`** | Retorna uma ou mais cervejarias aleatórias | `size` (max. 50) | Pode ser usado para gerar dados de teste diversificados |
+| **`/breweries/meta`** | Retorna metadados sobre os resultados, como a contagem total | Mesmos filtros de listagem | Muito útil para planejar a paginação e monitorar o volume de dados |
 
-## Features
+**Considerações para o Pipeline:**
 
-- Deploy a local Kubernetes cluster (Kind)
-- Deploy Airbyte for data ingestion
-- Deploy MongoDB for data storage
-- Deploy Prometheus and Grafana for monitoring
-- Setup Airbyte connections for Brewery API
-- Run data aggregations and transformations
+- Para uma carga completa, será necessário iterar por todas as páginas do endpoint `/breweries`
+- Os filtros opcionais (como `by_city`, `by_state`, `by_type`) são valiosos para simular cargas incrementais ou para atender a consultas específicas no futuro
+- O campo `brewery_type` é um enumerador fixo (e.g., `micro`, `nano`, `regional`), o que facilita seu uso como uma dimensão na camada semântica
 
-## Prerequisites
+## 🏗️ Estrutura do Projeto
 
+.
+├── brewctl
+├── cmd
+│   └── brewctl
+│       └── main.go
+├── deployments
+│   ├── airbyte-values.yaml
+│   ├── kind-config.yaml
+│   ├── mongodb-values.yaml
+│   └── monitoring-values.yaml
+├── go.mod
+├── go.sum
+├── internal
+│   ├── airbyte
+│   │   ├── client.go
+│   │   ├── connections.go
+│   │   └── deploy.go
+│   ├── brewerydb
+│   │   ├── client.go
+│   │   └── importer.go
+│   ├── kube
+│   │   ├── helm.go
+│   │   └── kind.go
+│   ├── mongodb
+│   │   ├── aggregations.go
+│   │   ├── aggregations_test.go
+│   │   └── client.go
+│   └── monitoring
+│       ├── grafana.go
+│       ├── monitoring.go
+│       └── prometheus.go
+├── pkg
+│   ├── types
+│   └── utils
+├── README.md
+└── scripts
+    ├── bash
+    ├── check-ports.sh
+    ├── health.sh
+    ├── mongodb-aggregations.js
+    ├── quick-start.sh
+    └── setup-and-run.sh
+
+### Descrição dos Diretórios
+
+- **cmd/brewctl**: Contém o código principal da CLI
+- **deployments**: Arquivos de configuração para os deployments no Kubernetes (Airbyte, MongoDB, Monitoramento) e configuração do Kind
+- **internal**: Pacotes internos da aplicação
+  - **airbyte**: Cliente e configurações para o Airbyte
+  - **brewerydb**: Cliente e importador da Open Brewery DB API
+  - **kube**: Funções para interagir com Kubernetes e Helm
+  - **mongodb**: Cliente e agregações para o MongoDB
+  - **monitoring**: Configurações para Prometheus e Grafana
+- **pkg**: Pacotes que podem ser reutilizados (types e utils)
+- **scripts**: Scripts auxiliares para setup, health check e agregações
+
+## ⚙️ Configuração e Uso
+
+### Comandos Principais
+
+    ./brewctl create-cluster: Cria um cluster Kind
+
+    ./brewctl deploy-mongodb: Instala o MongoDB
+
+    ./brewctl deploy-airbyte: Instala o Airbyte
+
+    ./brewctl deploy-monitoring: Instala o monitoring stack
+
+    ./brewctl import-data: Importa dados da Open Brewery DB
+
+### Pré-requisitos
+
+- Go 1.19+
 - Docker
 - Kind
 - Helm
-- Go 1.16+
 
-## Usage
+## 📈 Agregações e Análises
 
-1. Build the CLI:
-   ```bash
-   go build -o brewctl cmd/root.go
----
-brewctl/
-├── cmd/
-│   └── brewctl/
-│       └── main.go
-├── internal/
-│   ├── kube/
-│   │   ├── kind.go
-│   │   └── helm.go
-│   ├── airbyte/
-│   │   ├── client.go
-│   │   ├── deploy.go
-│   │   └── connections.go
-│   ├── monitoring/
-│   │   ├── prometheus.go
-│   │   └── grafana.go
-│   └── mongodb/
-│       ├── client.go
-│       └── aggregations.go
-├── scripts/
-│   ├── setup-and-run.sh
-│   └── mongodb-aggregations.js
-├── deployments/
-│   ├── kind-config.yaml
-│   ├── airbyte-values.yaml
-│   ├── mongodb-values.yaml
-│   └── monitoring-values.yaml
-├── pkg/
-│   └── types/
-│       └── types.go
-├── go.mod
-├── go.sum
-└── README.md
+O projeto inclui exemplos de agregações no MongoDB para análise dos dados, como contagem de cervejarias por estado, por tipo, etc. Essas agregações podem ser encontradas em internal/mongodb/aggregations.go e scripts/mongodb-aggregations.js.
+🛠️ Desenvolvimento
+Adicionando Novas Agregações
 
----
+    Edite internal/mongodb/aggregations.go para adicionar a nova agregação
+
+    Atualize os testes em internal/mongodb/aggregations_test.go
+
+    Execute go test ./internal/mongodb para verificar
+
+Estendendo a CLI
+
+Novos comandos podem ser adicionados em cmd/brewctl/main.go e implementados nos pacotes internos.

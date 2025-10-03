@@ -98,6 +98,19 @@ func DeployMongoDB() error {
 func deployMongoDBDirect() error {
 	fmt.Println("📦 Executando fallback: Deploy direto do MongoDB Community...")
 
+	// Limpeza dos recursos existentes para evitar conflitos
+	cleanupCmd := exec.Command("sh", "-c", `
+        kubectl delete deployment mongodb --ignore-not-found=true;
+        kubectl delete service mongodb --ignore-not-found=true;
+        sleep 2;
+    `)
+	cleanupCmd.Stdout = os.Stdout
+	cleanupCmd.Stderr = os.Stderr
+	if err := cleanupCmd.Run(); err != nil {
+		return fmt.Errorf("falha na limpeza dos recursos existentes: %v", err)
+	}
+
+	// Aplicar o novo manifesto
 	cmd := exec.Command("kubectl", "apply", "-f", "-")
 	cmd.Stdin = strings.NewReader(`apiVersion: apps/v1
 kind: Deployment
@@ -140,9 +153,10 @@ spec:
   ports:
   - port: 27017
     targetPort: 27017
-    nodePort: 27017
+    nodePort: 30017
   selector:
-    app: mongodb`)
+    app: mongodb
+`)
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
