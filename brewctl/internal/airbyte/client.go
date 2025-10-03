@@ -271,6 +271,8 @@ func (c *AirbyteClient) CreateConnection(sourceID, destinationID, name string) (
 
 // makeRequest helper method para fazer requisições HTTP
 func (c *AirbyteClient) makeRequest(method, endpoint string, body interface{}) (*http.Response, error) {
+	// Optionally log the request here if needed
+
 	var bodyReader io.Reader
 
 	if body != nil {
@@ -287,7 +289,13 @@ func (c *AirbyteClient) makeRequest(method, endpoint string, body interface{}) (
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	return c.HTTPClient.Do(req)
+	resp, err := c.HTTPClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("HTTP request failed: %v", err)
+	}
+
+	fmt.Printf("📡 Response status: %d\n", resp.StatusCode)
+	return resp, nil
 }
 
 // TestConnection testa uma conexão existente

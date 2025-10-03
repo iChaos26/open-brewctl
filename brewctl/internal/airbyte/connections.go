@@ -2,6 +2,8 @@ package airbyte
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 )
 
 // SetupConnections configura todas as conexões do Airbyte
@@ -38,11 +40,9 @@ func (c *AirbyteClient) SetupConnections() error {
 		return fmt.Errorf("failed to create connection: %v", err)
 	}
 
-	// 6. Testar a conexão (opcional)
-	if err := c.TestConnection(connectionID); err != nil {
-		fmt.Printf("⚠️ Connection test warning: %v\n", err)
-	} else {
-		fmt.Printf("✅ Connection test passed: %s\n", connectionID)
+	// 6. Testar e iniciar a sincronização
+	if err := c.TestAndSyncConnection(connectionID); err != nil {
+		return fmt.Errorf("failed to sync connection: %v", err)
 	}
 
 	fmt.Println("🎯 Airbyte connections setup completed successfully!")
@@ -52,22 +52,20 @@ func (c *AirbyteClient) SetupConnections() error {
 // CreateBrewerySource cria uma source para a BreweryDB API
 func (c *AirbyteClient) CreateBrewerySource(workspaceID string) (string, error) {
 	sourceConfig := map[string]interface{}{
-		"url":         "https://api.openbrewerydb.org/v1/breweries",
+		"url_base":    "https://api.openbrewerydb.org/v1/breweries",
 		"http_method": "GET",
-		"pagination": map[string]interface{}{
-			"strategy":        "PageIncrement",
-			"page_size":       50,
-			"page_size_field": "per_page",
-			"page_field":      "page",
+		"request_parameters": map[string]string{
+			"per_page": "50",
 		},
-		"json_path": "$[*]",
-		"headers": map[string]interface{}{
-			"Accept": "application/json",
-		},
+		"pagination_strategy": "PageIncrement",
+		"page_size":           50,
+		"page_size_field":     "per_page",
+		"page_field":          "page",
+		"start_page":          1,
 	}
 
-	// Source Definition ID para HTTP Request (valor padrão do Airbyte)
-	sourceDefinitionID := "decd338e-5647-4c0b-adf4-da0e75f5a750"
+	// CORREÇÃO: Source Definition ID correto para HTTP Request
+	sourceDefinitionID := "8be1cf83-fde1-477f-a4ad-318d23c9f3c6"
 
 	return c.CreateSource(workspaceID, "BreweryDB API", sourceDefinitionID, sourceConfig)
 }
@@ -75,19 +73,49 @@ func (c *AirbyteClient) CreateBrewerySource(workspaceID string) (string, error) 
 // CreateMongoDBDestination cria um destination para MongoDB
 func (c *AirbyteClient) CreateMongoDBDestination(workspaceID string) (string, error) {
 	destinationConfig := map[string]interface{}{
-		"host":     "mongodb.default.svc.cluster.local",
-		"port":     27017,
-		"database": "breweries_db",
+		"instance_type": "standalone",
+		"host":          "mongodb.default.svc.cluster.local",
+		"port":          27017,
+		"database":      "breweries_db",
 		"auth_type": map[string]interface{}{
 			"authorization": "none",
 		},
-		"tunnel_method": map[string]interface{}{
-			"tunnel_method": "NO_TUNNEL",
-		},
+		"tls": false,
 	}
 
-	// Destination Definition ID para MongoDB (valor padrão do Airbyte)
+	// CORREÇÃO: Destination Definition ID correto para MongoDB
 	destinationDefinitionID := "8e1c2c78-6c49-4c4a-b2c5-6e0b4b3c5a7b"
 
 	return c.CreateDestination(workspaceID, "Breweries MongoDB", destinationDefinitionID, destinationConfig)
+}
+
+// TestAndSyncConnection testa e inicia a sincronização
+func (c *AirbyteClient) TestAndSyncConnection(connectionID string) error {
+	fmt.Printf("🔍 Testing connection %s...\n", connectionID)
+
+	// Primeiro testar a conexão
+	testReq := map[string]interface{}{
+		"connectionId": connectionID,
+	}
+
+	resp, err := c.makeRequest("POST", "/api/v1/connections/get", testReq)
+	if err != nil {
+		return fmt.Errorf("failed to get connection: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("connection test failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	fmt.Printf("✅ Connection %s is valid\n", connectionID)
+
+	// Iniciar sincronização
+	fmt.Printf("🔄 Starting sync for connection %s...\n", connectionID)
+	if err := c.SyncConnection(connectionID); err != nil {
+		return fmt.Errorf("failed to start sync: %v", err)
+	}
+
+	return nil
 }

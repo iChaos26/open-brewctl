@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"brewctl/internal/airbyte"
 	"brewctl/internal/kube"
@@ -37,12 +38,13 @@ var clusterInitCmd = &cobra.Command{
 			log.Fatalf("❌ Failed to create Kind cluster: %v", err)
 		}
 
-		if err := airbyte.Deploy(); err != nil {
-			log.Fatalf("❌ Failed to deploy Airbyte: %v", err)
-		}
-
+		// CORREÇÃO: MongoDB PRIMEIRO, depois Airbyte
 		if err := kube.DeployMongoDB(); err != nil {
 			log.Fatalf("❌ Failed to deploy MongoDB: %v", err)
+		}
+
+		if err := airbyte.Deploy(); err != nil {
+			log.Fatalf("❌ Failed to deploy Airbyte: %v", err)
 		}
 
 		if err := monitoring.Deploy(); err != nil {
@@ -63,13 +65,21 @@ var deployConnectionsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("🔗 Deploying Airbyte connections...")
 
+		// CORREÇÃO: Aguardar Airbyte ficar totalmente pronto
+		fmt.Println("⏳ Waiting for Airbyte to be ready...")
+		time.Sleep(60 * time.Second)
+
 		client := airbyte.NewAirbyteClient("http://localhost:8000")
+		if err := client.WaitForReady(); err != nil {
+			log.Fatalf("❌ Airbyte not ready: %v", err)
+		}
+
 		if err := client.SetupConnections(); err != nil {
 			log.Fatalf("❌ Failed to deploy connections: %v", err)
 		}
 
 		fmt.Println("✅ Airbyte connections deployed successfully!")
-		fmt.Println("💡 Manual step: Trigger sync in Airbyte UI at http://localhost:8000")
+		fmt.Println("💡 You can trigger sync in Airbyte UI at http://localhost:8000")
 	},
 }
 
@@ -145,7 +155,7 @@ var statusCmd = &cobra.Command{
 			defer aggService.Close()
 			fmt.Println("✅ MongoDB is accessible")
 
-			// Count documents in each collection - usando contexto correto
+			// Count documents in each collection
 			ctx := context.Background()
 			if rawCount, err := aggService.DB.Collection("breweries_raw").CountDocuments(ctx, bson.M{}); err == nil {
 				fmt.Printf("📊 Bronze layer (raw): %d documents\n", rawCount)
@@ -165,6 +175,14 @@ var statusCmd = &cobra.Command{
 				log.Printf("⚠️ Failed to count aggregated documents: %v", err)
 			}
 		}
+
+		// Check Airbyte
+		client := airbyte.NewAirbyteClient("http://localhost:8000")
+		if err := client.WaitForReady(); err != nil {
+			log.Printf("⚠️ Airbyte status: %v", err)
+		} else {
+			fmt.Println("✅ Airbyte is accessible")
+		}
 	},
 }
 
@@ -174,12 +192,24 @@ var fullPipelineCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("🎯 Running complete data pipeline...")
 
+		// Aguardar serviços estarem prontos
+		fmt.Println("⏳ Waiting for services to be ready...")
+		time.Sleep(30 * time.Second)
+
 		// Primeiro, deploy das conexões
 		fmt.Println("\n📍 Step 1: Deploying Airbyte connections...")
 		client := airbyte.NewAirbyteClient("http://localhost:8000")
+		if err := client.WaitForReady(); err != nil {
+			log.Fatalf("❌ Airbyte not ready: %v", err)
+		}
+
 		if err := client.SetupConnections(); err != nil {
 			log.Fatalf("❌ Failed to deploy connections: %v", err)
 		}
+
+		// Aguardar possível sincronização inicial
+		fmt.Println("⏳ Waiting for potential initial sync...")
+		time.Sleep(60 * time.Second)
 
 		// Depois, executar agregações
 		fmt.Println("\n📍 Step 2: Running MongoDB aggregations...")
